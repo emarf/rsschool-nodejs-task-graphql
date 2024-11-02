@@ -1,7 +1,9 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
-import { createGqlResponseSchema, gqlResponseSchema } from './schemas.js';
-import { graphql } from 'graphql';
+import { execute, parse, validate } from 'graphql';
+import depthLimit from 'graphql-depth-limit';
+import { createMemberTypesLoader, createPostsLoader, createProfilesLoader, createSubscribedToUserLoader, createUserSubscribedToLoader } from './loaders.js';
 import { schema } from './schema.js';
+import { createGqlResponseSchema, gqlResponseSchema } from './schemas.js';
 
 const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
   const { prisma } = fastify;
@@ -17,19 +19,34 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async handler(req) {
       const { query, variables } = req.body;
-      console.log('variables', variables);
+
+      const loaders = {
+        postsLoader: createPostsLoader(prisma),
+        profilesLoader: createProfilesLoader(prisma),
+        memberTypesLoader: createMemberTypesLoader(prisma),
+        userSubscribedToLoader: createUserSubscribedToLoader(prisma),
+        subscribedToUserLoader: createSubscribedToUserLoader(prisma),
+      };
+
       try {
-        const result = await graphql({
+        const documentAST = parse(query);
+        const validationErrors = validate(schema, documentAST, [depthLimit(5)]);
+
+        if (validationErrors.length > 0) {
+          return { errors: validationErrors };
+        }
+
+        const result = await execute({
           schema,
-          source: query,
+          document: documentAST,
           variableValues: variables,
-          contextValue: { prisma },
+          contextValue: { prisma, loaders }
         });
 
         return { data: result.data, errors: result.errors };
       } catch (error) {
         req.log.error(error);
-        // return { errors: [{ message: error.message }] };
+        // return { errors: [new GraphQLError(error.message)] };
       }
     },
   });

@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
 import { GraphQLBoolean, GraphQLInputObjectType, GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLObjectType } from "graphql";
+import { Context } from './global.js';
 import { MemberType, MemberTypeIdEnum } from './member.js';
 import { UUIDType } from './uuid.js';
 
@@ -13,13 +13,9 @@ export const ProfileType = new GraphQLObjectType({
     userId: { type: new GraphQLNonNull(UUIDType) },
     memberTypeId: { type: new GraphQLNonNull(MemberTypeIdEnum) },
     memberType: {
-      type: MemberType,
-      resolve: ({ memberTypeId }: { memberTypeId: string; }, args, { prisma }: { prisma: PrismaClient; }) => {
-        return prisma.memberType.findUnique({
-          where: {
-            id: memberTypeId,
-          },
-        });
+      type: new GraphQLNonNull(MemberType),
+      resolve: async ({ memberTypeId }: { memberTypeId: string; }, args, { loaders }: Context) => {
+        return await loaders.memberTypesLoader.load(memberTypeId);
       },
     },
   })
@@ -30,7 +26,7 @@ export const ProfileQuery = new GraphQLObjectType({
   fields: () => ({
     profiles: {
       type: new GraphQLList(ProfileType),
-      resolve: (source, args, { prisma }: { prisma: PrismaClient; }) => {
+      resolve: (source, args, { prisma }: Context) => {
         return prisma.profile.findMany();
       }
     },
@@ -39,12 +35,8 @@ export const ProfileQuery = new GraphQLObjectType({
       args: {
         id: { type: new GraphQLNonNull(UUIDType) }
       },
-      resolve: async (source, { id }: { id: string; }, { prisma }: { prisma: PrismaClient; }) => {
-        return prisma.profile.findUnique({
-          where: {
-            id
-          }
-        });
+      resolve: async (source, { id }: { id: string; }, { prisma }: Context) => {
+        return prisma.profile.findUnique({ where: { id } });
       }
     }
   }),
@@ -85,7 +77,7 @@ export const ProfileMutation = new GraphQLObjectType({
       args: {
         dto: { type: new GraphQLNonNull(CreateProfileInput) },
       },
-      resolve: async (source, { dto }: { dto: ProfileDto; }, { prisma }: { prisma: PrismaClient; }) => {
+      resolve: async (source, { dto }: { dto: ProfileDto; }, { prisma }: Context) => {
         return await prisma.profile.create({
           data: dto,
         });
@@ -97,7 +89,7 @@ export const ProfileMutation = new GraphQLObjectType({
         id: { type: new GraphQLNonNull(UUIDType) },
         dto: { type: new GraphQLNonNull(ChangeProfileInput) },
       },
-      resolve: async (source, { id, dto }: { id: string; dto: Partial<ProfileDto>; }, { prisma }: { prisma: PrismaClient; }) => {
+      resolve: async (source, { id, dto }: { id: string; dto: Partial<ProfileDto>; }, { prisma }: Context) => {
         return await prisma.profile.update({
           where: { id },
           data: dto,
@@ -109,7 +101,7 @@ export const ProfileMutation = new GraphQLObjectType({
       args: {
         id: { type: new GraphQLNonNull(UUIDType) },
       },
-      resolve: async (source, { id }: { id: string; }, { prisma }: { prisma: PrismaClient; }) => {
+      resolve: async (source, { id }: { id: string; }, { prisma }: Context) => {
         await prisma.profile.delete({ where: { id } });
         return true;
       }

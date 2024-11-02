@@ -1,11 +1,12 @@
-import { PrismaClient } from "@prisma/client";
 import { GraphQLEnumType, GraphQLFloat, GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLObjectType } from "graphql";
+import { MemberTypeId } from "../../member-types/schemas.js";
+import { Context } from "./global.js";
 
 export const MemberTypeIdEnum = new GraphQLEnumType({
   name: "MemberTypeId",
   values: {
-    BASIC: { value: "BASIC" },
-    BUSINESS: { value: "BUSINESS" },
+    BASIC: { value: MemberTypeId.BASIC },
+    BUSINESS: { value: MemberTypeId.BUSINESS },
   },
 });
 
@@ -24,7 +25,7 @@ export const MemberQuery = new GraphQLObjectType({
   fields: () => ({
     memberTypes: {
       type: new GraphQLList(MemberType),
-      resolve: async (source, args, { prisma }: { prisma: PrismaClient; }) => {
+      resolve: async (source, args, { prisma }: Context) => {
         return await prisma.memberType.findMany();
       }
     },
@@ -33,7 +34,7 @@ export const MemberQuery = new GraphQLObjectType({
       args: {
         id: { type: new GraphQLNonNull(MemberTypeIdEnum) }
       },
-      resolve: async (source, { id }: { id: string; }, { prisma }: { prisma: PrismaClient; }) => {
+      resolve: async (source, { id }: { id: string; }, { prisma }: Context) => {
         return await prisma.memberType.findUnique({ where: { id } });
       }
     },

@@ -1,6 +1,7 @@
+import { Post } from "@prisma/client";
 import { GraphQLBoolean, GraphQLInputObjectType, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLString } from "graphql";
+import { Context } from "./global.js";
 import { UUIDType } from './uuid.js';
-import { PrismaClient } from "@prisma/client";
 
 export const PostType = new GraphQLObjectType({
   name: "Post",
@@ -17,7 +18,7 @@ export const PostQuery = new GraphQLObjectType({
   fields: () => ({
     posts: {
       type: new GraphQLList(PostType),
-      resolve: (source, args, { prisma }: { prisma: PrismaClient; }) => {
+      resolve: (source, args, { prisma }: Context) => {
         return prisma.post.findMany();
       }
     },
@@ -26,19 +27,13 @@ export const PostQuery = new GraphQLObjectType({
       args: {
         id: { type: new GraphQLNonNull(UUIDType) }
       },
-      resolve: (source, { id }: { id: string; }, { prisma }: { prisma: PrismaClient; }) => {
+      resolve: (source, { id }: { id: string; }, { prisma }: Context) => {
         return prisma.post.findUnique({ where: { id } });
       }
     },
   })
 });
 
-
-type PostDTO = {
-  title: string;
-  content: string;
-  authorId: string;
-};
 
 const CreatePostInput = new GraphQLInputObjectType({
   name: 'CreatePostInput',
@@ -66,7 +61,7 @@ export const PostMutation = new GraphQLObjectType({
       args: {
         dto: { type: new GraphQLNonNull(CreatePostInput) },
       },
-      resolve: async (source, { dto }: { dto: PostDTO; }, { prisma }: { prisma: PrismaClient; }) => {
+      resolve: async (source, { dto }: { dto: Post; }, { prisma }: Context) => {
         return await prisma.post.create({ data: dto });
       }
     },
@@ -76,7 +71,7 @@ export const PostMutation = new GraphQLObjectType({
         id: { type: new GraphQLNonNull(UUIDType) },
         dto: { type: new GraphQLNonNull(ChangePostInput) },
       },
-      resolve: async (source, { id, dto }: { id: string; dto: Partial<PostDTO>; }, { prisma }: { prisma: PrismaClient; }) => {
+      resolve: async (source, { id, dto }: { id: string; dto: Partial<Post>; }, { prisma }: Context) => {
         return await prisma.post.update({
           where: { id },
           data: dto,
@@ -88,7 +83,7 @@ export const PostMutation = new GraphQLObjectType({
       args: {
         id: { type: new GraphQLNonNull(UUIDType) },
       },
-      resolve: async (source, { id }: { id: string; }, { prisma }: { prisma: PrismaClient; }) => {
+      resolve: async (source, { id }: { id: string; }, { prisma }: Context) => {
         await prisma.post.delete({ where: { id } });
         return true;
       }
