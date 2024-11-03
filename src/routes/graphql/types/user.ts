@@ -1,5 +1,6 @@
 import { User } from '@prisma/client';
 import { GraphQLBoolean, GraphQLFloat, GraphQLInputObjectType, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLResolveInfo, GraphQLString } from "graphql";
+import { parseResolveInfo, ResolveTree, simplifyParsedResolveInfoFragmentWithType } from 'graphql-parse-resolve-info';
 import { Context } from './global.js';
 import { PostType } from './post.js';
 import { ProfileType } from './profile.js';
@@ -14,7 +15,7 @@ export const UserType: GraphQLObjectType = new GraphQLObjectType({
     profile: {
       type: ProfileType,
       resolve: async ({ id }: { id: string; }, args, { loaders }: Context) => {
-        return await loaders.profilesLoader.load(id);
+        return await loaders.profileLoader.load(id);
       }
     },
     posts: {
@@ -25,18 +26,25 @@ export const UserType: GraphQLObjectType = new GraphQLObjectType({
     },
     subscribedToUser: {
       type: new GraphQLList(UserType),
-      resolve: async (source, args, { loaders }: Context) => {
-        return await loaders.subscribedToUserLoader.load(source.id);
+      resolve: async (source: any, args, { loaders }: Context) => {
+        const subsIds = source.subscribedToUser.map(({ subscriberId }) => subscriberId);
+        return await loaders.userLoader.loadMany(subsIds);
       }
     },
     userSubscribedTo: {
       type: new GraphQLList(UserType),
-      resolve: async (source, args, { loaders }: Context) => {
-        return await loaders.userSubscribedToLoader.load(source.id);
+      resolve: async (source: any, args, { loaders }: Context) => {
+        const authorIds = source.userSubscribedTo.map(({ authorId }) => authorId);
+        return await loaders.userLoader.loadMany(authorIds);
       }
     },
   })
 });
+
+type UserInclude = {
+  subscribedToUser?: boolean;
+  userSubscribedTo?: boolean;
+};
 
 
 export const UserQuery = new GraphQLObjectType({
@@ -44,31 +52,31 @@ export const UserQuery = new GraphQLObjectType({
   fields: () => ({
     users: {
       type: new GraphQLList(UserType),
-      resolve: async (source, args, { prisma }: Context, resolveInfo: GraphQLResolveInfo) => {
-        // const parsedResolveInfo = parseResolveInfo(resolveInfo);
-        // console.log('parsedResolveInfo', parsedResolveInfo);
-        // const include = {} as any;
+      resolve: async (source, args, { prisma, loaders }: Context, resolveInfo: GraphQLResolveInfo) => {
+        const parsedResolveInfo = parseResolveInfo(resolveInfo);
+        const include: UserInclude = {};
 
-        // if (parsedResolveInfo) {
-        //   const { fields }: { fields?: UserFields } = simplifyParsedResolveInfoFragmentWithType(
-        //     parsedResolveInfo as ResolveTree,
-        //     resolveInfo.returnType,
-        //   );
+        if (parsedResolveInfo) {
+          const { fields }: { fields: any } = simplifyParsedResolveInfoFragmentWithType(
+            parsedResolveInfo as ResolveTree,
+            resolveInfo.returnType,
+          );
 
-        //   if (fields?.subscribedToUser) {
-        //     include.subscribedToUser = { include: { subscriber: true } };
-        //   }
+          if (fields?.subscribedToUser) {
+            include.subscribedToUser = true;
+          }
 
-        //   if (fields?.userSubscribedTo) {
-        //     include.userSubscribedTo = { include: { author: true } };
-        //   }
-        // }
-        // console.log('include', include);
-        // const result = await prisma.user.findMany({ include });
-        // console.log('result', result);
-        // return result;
+          if (fields?.userSubscribedTo) {
+            include.userSubscribedTo = true;
+          }
+        }
 
-        return await prisma.user.findMany();
+        const users = await prisma.user.findMany({ include });
+        users.forEach((user) => {
+          loaders.userLoader.prime(user.id, user);
+        });
+
+        return users;
       }
     },
     user: {
@@ -76,8 +84,26 @@ export const UserQuery = new GraphQLObjectType({
       args: {
         id: { type: new GraphQLNonNull(UUIDType) }
       },
-      resolve: async (source, { id }: { id: string; }, { prisma }: Context) => {
-        return await prisma.user.findUnique({ where: { id } });
+      resolve: async (source, { id }: { id: string; }, { prisma }: Context, resolveInfo: GraphQLResolveInfo) => {
+        const parsedResolveInfo = parseResolveInfo(resolveInfo);
+        const include: UserInclude = {};
+
+        if (parsedResolveInfo) {
+          const { fields }: { fields: any } = simplifyParsedResolveInfoFragmentWithType(
+            parsedResolveInfo as ResolveTree,
+            resolveInfo.returnType,
+          );
+
+          if (fields?.subscribedToUser) {
+            include.subscribedToUser = true;
+          }
+
+          if (fields?.userSubscribedTo) {
+            include.userSubscribedTo = true;
+          }
+        }
+
+        return await prisma.user.findUnique({ where: { id }, include });
       }
     },
   })

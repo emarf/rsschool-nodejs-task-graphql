@@ -1,3 +1,4 @@
+import { Profile } from "@prisma/client";
 import { GraphQLBoolean, GraphQLInputObjectType, GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLObjectType } from "graphql";
 import { Context } from './global.js';
 import { MemberType, MemberTypeIdEnum } from './member.js';
@@ -15,7 +16,7 @@ export const ProfileType = new GraphQLObjectType({
     memberType: {
       type: new GraphQLNonNull(MemberType),
       resolve: async ({ memberTypeId }: { memberTypeId: string; }, args, { loaders }: Context) => {
-        return await loaders.memberTypesLoader.load(memberTypeId);
+        return await loaders.memberTypeLoader.load(memberTypeId);
       },
     },
   })
@@ -41,13 +42,6 @@ export const ProfileQuery = new GraphQLObjectType({
     }
   }),
 });
-
-type ProfileDto = {
-  isMale: boolean;
-  yearOfBirth: number;
-  memberTypeId: string;
-  userId: string;
-};
 
 const CreateProfileInput = new GraphQLInputObjectType({
   name: 'CreateProfileInput',
@@ -77,7 +71,7 @@ export const ProfileMutation = new GraphQLObjectType({
       args: {
         dto: { type: new GraphQLNonNull(CreateProfileInput) },
       },
-      resolve: async (source, { dto }: { dto: ProfileDto; }, { prisma }: Context) => {
+      resolve: async (source, { dto }: { dto: Profile; }, { prisma }: Context) => {
         return await prisma.profile.create({
           data: dto,
         });
@@ -89,7 +83,7 @@ export const ProfileMutation = new GraphQLObjectType({
         id: { type: new GraphQLNonNull(UUIDType) },
         dto: { type: new GraphQLNonNull(ChangeProfileInput) },
       },
-      resolve: async (source, { id, dto }: { id: string; dto: Partial<ProfileDto>; }, { prisma }: Context) => {
+      resolve: async (source, { id, dto }: { id: string; dto: Partial<Profile>; }, { prisma }: Context) => {
         return await prisma.profile.update({
           where: { id },
           data: dto,

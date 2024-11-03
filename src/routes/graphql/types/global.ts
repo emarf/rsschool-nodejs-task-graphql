@@ -1,14 +1,13 @@
 
 import { PrismaClient } from "@prisma/client";
-import { createMemberTypesLoader, createPostsLoader, createProfilesLoader, createSubscribedToUserLoader, createUserSubscribedToLoader } from "../loaders.js";
+import { createMemberTypeLoader, createPostsLoader, createProfileLoader, createUserLoader } from "../loaders.js";
 
 export interface Context {
   prisma: PrismaClient;
   loaders: {
     postsLoader: ReturnType<typeof createPostsLoader>;
-    profilesLoader: ReturnType<typeof createProfilesLoader>;
-    memberTypesLoader: ReturnType<typeof createMemberTypesLoader>;
-    userSubscribedToLoader: ReturnType<typeof createUserSubscribedToLoader>;
-    subscribedToUserLoader: ReturnType<typeof createSubscribedToUserLoader>;
+    profileLoader: ReturnType<typeof createProfileLoader>;
+    memberTypeLoader: ReturnType<typeof createMemberTypeLoader>;
+    userLoader: ReturnType<typeof createUserLoader>;
   };
 }

@@ -1,7 +1,7 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { execute, parse, validate } from 'graphql';
 import depthLimit from 'graphql-depth-limit';
-import { createMemberTypesLoader, createPostsLoader, createProfilesLoader, createSubscribedToUserLoader, createUserSubscribedToLoader } from './loaders.js';
+import { createMemberTypeLoader, createPostsLoader, createProfileLoader, createUserLoader } from './loaders.js';
 import { schema } from './schema.js';
 import { createGqlResponseSchema, gqlResponseSchema } from './schemas.js';
 
@@ -22,10 +22,9 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
 
       const loaders = {
         postsLoader: createPostsLoader(prisma),
-        profilesLoader: createProfilesLoader(prisma),
-        memberTypesLoader: createMemberTypesLoader(prisma),
-        userSubscribedToLoader: createUserSubscribedToLoader(prisma),
-        subscribedToUserLoader: createSubscribedToUserLoader(prisma),
+        profileLoader: createProfileLoader(prisma),
+        memberTypeLoader: createMemberTypeLoader(prisma),
+        userLoader: createUserLoader(prisma),
       };
 
       try {
@@ -46,7 +45,6 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
         return { data: result.data, errors: result.errors };
       } catch (error) {
         req.log.error(error);
-        // return { errors: [new GraphQLError(error.message)] };
       }
     },
   });
